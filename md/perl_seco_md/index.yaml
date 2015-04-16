@@ -1,5 +1,0 @@
-default:
-  name: perl-seco-md
-  version: '1.0'
-  summary: Seco::MD
-  arch: noarch

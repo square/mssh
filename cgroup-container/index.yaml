@@ -1,7 +1,0 @@
-default:
-  name: square-container
-  version: '1.0.7'
-  summary: Basic container utilities
-  arch: x86_64
-  requires:
-   - libcgroup
