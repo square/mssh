@@ -37,6 +37,10 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
   # option to merge stdin/stdout into one buf? how should this work?
   # option to ignore as-we-go yield output - this is off by default now except for success/fail
 end
