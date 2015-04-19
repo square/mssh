@@ -9,9 +9,11 @@ describe MultipleCmd do
   describe '.run' do
     let(:targets) { ['localhost', 'localhost'] }
     let(:command) { "hostname" }
+    let(:maxflight) { targets.size }
     let(:instance) do
       MultipleCmd.new.tap do |m|
         m.commands = targets.map { ["/bin/sh", "-c", command] }
+        m.maxflight = maxflight
       end
     end
 
@@ -33,8 +35,26 @@ describe MultipleCmd do
         expect(first[:retval].exitstatus).to be(0)
         expect(first[:write_buf_position]).to be(0)
         expect(first[:command]).to eq(['/bin/sh', '-c', 'hostname'])
-        expect(first[:time_start]).to be_within(1.0).of(Time.now.to_i)
-        expect(first[:time_end]).to be_within(1.0).of(Time.now.to_i)
+        expect(first[:time_start]).to be_within(0.1).of(Time.now.to_f)
+        expect(first[:time_end]).to be_within(0.1).of(Time.now.to_f)
+      end
+    end
+
+    context 'when maxflight is larger than the number of hosts' do
+      let(:maxflight) { 1 }
+      let(:command) { 'sleep 1' }
+
+      it 'serializes the executions' do
+        result = run
+        expect(result.size).to eq(2)
+        first, second = result
+        # The first one starts
+        expect(first[:time_start]).to be_within(0.1).of(Time.now.to_f - 2)
+        # And takes a second
+        expect(first[:time_end]).to be_within(0.1).of(Time.now.to_f - 1)
+        # And the second one starts right around the time the first one ends
+        expect(second[:time_start]).to be_within(0.1).of(first[:time_end])
+        expect(second[:time_end]).to be_within(0.1).of(Time.now.to_f)
       end
     end
   end
