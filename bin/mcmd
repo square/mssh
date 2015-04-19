@@ -10,9 +10,12 @@ options = {
   :maxflight => 200,
   :timeout => 60,
   :global_timeout => 0,
+  :range => [],
 }
 
 optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: mcmd [options] COMMAND"
+
   opts.on('-r', '--range RANGE', 'currently takes a CSV list') do |arg|
     options[:range] = arg 
   end
