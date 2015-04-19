@@ -42,8 +42,16 @@ optparse = OptionParser.new do |opts|
 end
 optparse.parse!
 
-raise "Error, need -r argument" if options[:range].nil? or options[:range].empty?
-raise "Error, need command to run" if ARGV.size.zero?
+if options[:range].nil? || options[:range].empty?
+  puts "#{$0}: Error, need -r argument"
+  puts optparse
+  exit 1
+end
+if ARGV.size.zero?
+  puts "#{$0}: Error, need command to run"
+  puts optparse
+  exit 1
+end
 
 m = MultipleCmd.new
 
