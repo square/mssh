@@ -1,0 +1,20 @@
+PATH
+  remote: .
+  specs:
+    mssh (0.0.10)
+      io-poll
+      json
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ffi (1.9.8)
+    io-poll (0.0.4)
+      ffi
+    json (1.8.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  mssh!
