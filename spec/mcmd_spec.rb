@@ -86,14 +86,18 @@ describe MultipleCmd do
       # 20 commands running serially
       let(:maxflight) { 1 }
       let(:targets) { ['localhost']*20 }
-      # which should take 0.1*20 = 1 second
+      # which should take 0.1*20 = 2 seconds
       let(:command) { 'sleep 0.1' }
 
       it 'abandons subprocesses after the configured time' do
         result = nil
-        expect { result = run  }.to_not raise_error
+        start = Time.now
+        expect { result = run }.to_not raise_error
         # Only about 3 of them ran before time ran out
-        expect(result.size).to be_within(1).of(3)
+        successful, _failed = result.partition {|r| r[:retval].success? }
+        expect(successful.size).to be_within(1).of(3)
+        # And the amount of time that has passed is roughly the timeout
+        expect(Time.now - start).to be_within(0.1).of(0.3)
       end
     end
   end
