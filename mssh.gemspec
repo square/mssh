@@ -1,13 +1,13 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name        = "mssh"
-  s.version     = "0.0.10"
+  s.version     = "0.0.11"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Miller"]
   s.email       = ["github@squareup.com"]
   s.summary     = "Parallel ssh and command execution."
   s.description = "Simple library for running jobs and sshing to many hosts at once."
-  s.homepage    = "http://github.com/square/prodeng"
+  s.homepage    = "http://github.com/square/mssh"
 
   s.required_rubygems_version = ">= 1.3.6"
 
