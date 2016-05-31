@@ -96,7 +96,7 @@ m.debug = options[:debug]
 
 result = m.run
 
-if (options[:collapse] and options[:range])
+if (options[:collapse])
   # print a collapsed summary
   out_matches = Hash.new
   result.each do |r|
@@ -108,7 +108,7 @@ if (options[:collapse] and options[:range])
   end
   # output => [targets ...]
   out_matches.each_pair do |k,v|
-    hosts = range.compress v
+    hosts = if options[:range] then range.compress v else v.join ',' end
     puts "#{hosts}: '#{k.chomp}'"
   end
 else
