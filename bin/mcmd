@@ -43,6 +43,9 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
+  opts.on('--json', "Output results as JSON") do |arg|
+    options[:json_out] = arg
+  end
   # option to merge stdin/stdout into one buf? how should this work?
   # option to ignore as-we-go yield output - this is off by default now except for success/fail
 end
@@ -89,7 +92,12 @@ m.debug = options[:debug]
 
 result = m.run
 
-if options[:collapse]
+
+if (options[:json_out])
+  require 'json'
+  puts JSON.generate(result)
+
+elsif options[:collapse]
   # print a collapsed summary
   stdout_matches_success = Hash.new
   stdout_matches_failure = Hash.new

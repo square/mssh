@@ -46,6 +46,9 @@ optparse = OptionParser.new do |opts|
   opts.on('--sshcmd BINARY', "Path to the ssh binary") do |arg|
     options[:sshcmd] = arg
   end
+  opts.on('--json', "Output results as JSON") do |arg|
+    options[:json_out] = arg
+  end
   # option to merge stdin/stdout into one buf?
   # option to ignore as-we-go yield output
 end
@@ -77,8 +80,6 @@ raise "no targets specified. Check your -r, -f or --hostlist inputs" if targets.
 raise "need command to run" if ARGV.size.zero?
 raise "too many arguments" if ARGV.size != 1
 
-
-
 m = MultipleCmd.new
 m.commands = targets.map { |t| [options[:sshcmd], *options[:sshopt] ].push t, ARGV.first }
 command_to_target = Hash.new
@@ -96,7 +97,11 @@ m.debug = options[:debug]
 
 result = m.run
 
-if (options[:collapse])
+if (options[:json_out])
+  require 'json'
+  puts JSON.generate(result)
+
+elsif (options[:collapse])
   # print a collapsed summary
   out_matches = Hash.new
   result.each do |r|
