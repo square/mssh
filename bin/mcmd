@@ -1,128 +1,25 @@
 #!/usr/bin/env ruby
 
-require 'pp'
+require_relative '../lib/cli'
 
-$LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__) + "/../lib"))
-require 'mcmd'
-
-require 'optparse'
-options = {
+cli = CommonCli.new({
+  # defaults
   :maxflight => 200,
   :timeout => 60,
   :global_timeout => 0,
-}
+})
 
-optparse = OptionParser.new do |opts|
-  opts.on('-r', '--range RANGE', 'currently takes a CSV list') do |arg|
-    options[:range] = arg 
+cli.extra_options = lambda do |parser, options|
+  parser.on('--noshell', "Don't invoke a shell. Args will be passed to exec verbatim ") do |arg|
+    options[:noshell] = arg
   end
-  opts.on('--hostlist x,y,z', Array, 'List of hostnames to execute on') do |arg|
-    options[:hostlist] = arg
-  end
-  opts.on('-f', '--file FILE', 'List of hostnames in a FILE use (/dev/stdin) for reading from stdin') do |arg|
-    options[:file] = arg
-  end
-  opts.on('-m', '--maxflight 50', 'How many subprocesses? 50 by default') do |arg|
-    options[:maxflight] = arg 
-  end
-  opts.on('-t', '--timeout 60', 'How many seconds may each individual process take? 0 for no timeout') do |arg|
-    options[:timeout] = arg 
-  end
-  opts.on('-g', '--global_timeout 600', 'How many seconds for the whole shebang 0 for no timeout') do |arg|
-    options[:global_timeout] = arg 
-  end
-  opts.on('--noshell', "Don't invoke a shell. Args will be passed to exec verbatim ") do |arg|
-    options[:noshell] = arg 
-  end
-  opts.on('-c', '--collapse', "Collapse similar output ") do |arg|
-    options[:collapse] = arg 
-  end
-  opts.on('-v', '--verbose', "Verbose output") do |arg|
-    options[:verbose] = arg 
-  end
-  opts.on('-d', '--debug', "Debug output") do |arg|
-    options[:debug] = arg 
-  end
-  opts.on('--json', "Output results as JSON") do |arg|
-    options[:json_out] = arg
-  end
-  # option to merge stdin/stdout into one buf? how should this work?
-  # option to ignore as-we-go yield output - this is off by default now except for success/fail
-end
-optparse.parse!
-
-## Get targets from -r or -f or --hostlist
-targets = []
-if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
-  raise "Error, need -r or -f or --hostlist option"
 end
 
-if (!options[:range].nil?)
-  require 'rangeclient'
-  range = Range::Client.new
-  targets.push *range.expand(options[:range])
-end
-if (!options[:file].nil?)
-  targets_fd = File.open(options[:file])
-  targets_fd.read.each_line { |x| targets << x.chomp }
-end
-if (!options[:hostlist].nil?)
-  targets.push *options[:hostlist]
+cli.parse ARGV
+
+result = cli.runcmd do |cmd, t|
+	if cli.options[:noshell] then [cmd] else ["/bin/sh", "-c"].push cmd end
 end
 
-raise "no targets specified. Check your -r, -f or --hostlist inputs" if targets.size.zero?
-raise "need command to run" if ARGV.size.zero?
-raise "too many arguments" if ARGV.size != 1
-
-m = MultipleCmd.new
-m.commands = targets.map { |t| ["/bin/sh", "-c"].push ARGV.map { |arg| arg.gsub('HOSTNAME', t)}.join " " }
-command_to_target = Hash.new
-targets.size.times do |i|
-  command_to_target[m.commands[i].object_id] = targets[i]
-end
-m.yield_startcmd = lambda { |p| puts "#{command_to_target[p.command.object_id]}: starting" } if options[:verbose]
-m.yield_wait = lambda { |p| puts "#{p.success? ? 'SUCCESS' : 'FAILURE'} #{command_to_target[p.command.object_id]}: '#{p.stdout_buf}'" }
-# m.yield_proc_timeout = lambda { |p| puts "am killing #{p.inspect}"}
-
-m.perchild_timeout = options[:timeout].to_i
-m.global_timeout = options[:global_timeout].to_i
-m.maxflight = options[:maxflight].to_i
-m.verbose = options[:verbose]
-m.debug = options[:debug]
-
-result = m.run
-
-
-if (options[:json_out])
-  require 'json'
-  puts JSON.generate(result)
-
-elsif options[:collapse]
-  # print a collapsed summary
-  stdout_matches_success = Hash.new
-  stdout_matches_failure = Hash.new
-  result.each do |r|
-    if r[:retval].success?
-      stdout_matches_success[r[:stdout_buf]] = [] if stdout_matches_success[r[:stdout_buf]].nil?
-      stdout_matches_success[r[:stdout_buf]] << command_to_target[r[:command].object_id]
-    else
-      stdout_matches_failure[r[:stdout_buf]] = [] if stdout_matches_failure[r[:stdout_buf]].nil?
-      stdout_matches_failure[r[:stdout_buf]] << command_to_target[r[:command].object_id]
-    end
-  end
-  # output => [targets ...]
-  stdout_matches_success.each_pair do |k,v|
-    puts "SUCCESS: #{v.join ','}: #{k}"
-  end
-  stdout_matches_failure.each_pair do |k,v|
-    puts "FAILURE: #{v.join ','}: #{k}"
-  end
-else
-  # we already printed while in-flight; do nothing
-    # not collapse, print one per host
-#  result.each do |r|
-#    target = command_to_target[r[:command].object_id]
-#    puts "#{target}: '#{r[:stdout_buf].chomp}'\n"
-#  end
-end
+cli.output result
 
