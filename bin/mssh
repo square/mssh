@@ -29,4 +29,3 @@ result = cli.runcmd do |command, target|
 end
 
 cli.output result
-
