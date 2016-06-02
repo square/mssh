@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'rubygems'
 require 'pp'
@@ -46,6 +46,9 @@ optparse = OptionParser.new do |opts|
   opts.on('--sshcmd BINARY', "Path to the ssh binary") do |arg|
     options[:sshcmd] = arg
   end
+  opts.on('--json', "Output results as JSON") do |arg|
+    options[:json_out] = arg
+  end
   # option to merge stdin/stdout into one buf?
   # option to ignore as-we-go yield output
 end
@@ -55,15 +58,18 @@ optparse.parse!
 options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
 options[:sshcmd] = "/usr/bin/ssh"
 
+if options[:range] || options[:collapse]
+  require 'rangeclient'
+  rangeclient = Range::Client.new
+end
+
 targets = []
 if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
   raise "Error, need -r or -f or --hostlist option"
 end
 
 if (!options[:range].nil?)
-  require 'rangeclient'
-  range = Range::Client.new
-  targets.push *range.expand(options[:range])
+  targets.push *rangeclient.expand(options[:range])
 end
 if (!options[:file].nil?)
   targets_fd = File.open(options[:file])
@@ -76,8 +82,6 @@ end
 raise "no targets specified. Check your -r, -f or --hostlist inputs" if targets.size.zero?
 raise "need command to run" if ARGV.size.zero?
 raise "too many arguments" if ARGV.size != 1
-
-
 
 m = MultipleCmd.new
 m.commands = targets.map { |t| [options[:sshcmd], *options[:sshopt] ].push t, ARGV.first }
@@ -96,7 +100,11 @@ m.debug = options[:debug]
 
 result = m.run
 
-if (options[:collapse] and options[:range])
+if (options[:json_out])
+  require 'json'
+  puts JSON.generate(result)
+
+elsif (options[:collapse])
   # print a collapsed summary
   out_matches = Hash.new
   result.each do |r|
@@ -108,7 +116,7 @@ if (options[:collapse] and options[:range])
   end
   # output => [targets ...]
   out_matches.each_pair do |k,v|
-    hosts = range.compress v
+    hosts = rangeclient.compress v
     puts "#{hosts}: '#{k.chomp}'"
   end
 else
