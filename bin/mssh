@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'rubygems'
 require 'pp'
@@ -58,15 +58,18 @@ optparse.parse!
 options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
 options[:sshcmd] = "/usr/bin/ssh"
 
+if options[:range] || options[:collapse]
+  require 'rangeclient'
+  rangeclient = Range::Client.new
+end
+
 targets = []
 if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
   raise "Error, need -r or -f or --hostlist option"
 end
 
 if (!options[:range].nil?)
-  require 'rangeclient'
-  range = Range::Client.new
-  targets.push *range.expand(options[:range])
+  targets.push *rangeclient.expand(options[:range])
 end
 if (!options[:file].nil?)
   targets_fd = File.open(options[:file])
@@ -113,7 +116,7 @@ elsif (options[:collapse])
   end
   # output => [targets ...]
   out_matches.each_pair do |k,v|
-    hosts = if options[:range] then range.compress v else v.join ',' end
+    hosts = rangeclient.compress v
     puts "#{hosts}: '#{k.chomp}'"
   end
 else
