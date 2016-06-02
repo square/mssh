@@ -1,5 +1,6 @@
 require 'optparse'
 require_relative './mcmd'
+
 ##
 # Implements what is shared
 # between mssh and mcmd.
@@ -62,6 +63,11 @@ class CommonCli
 
     optparse.parse! argv
 
+    if options[:range] || options[:collapse]
+      require 'rangeclient'
+      @rangeclient = Range::Client.new
+    end
+
     ## Get targets from -r or -f or --hostlist
     @targets = []
     if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
@@ -69,9 +75,7 @@ class CommonCli
     end
 
     if (!options[:range].nil?)
-      require 'rangeclient'
-      range = Range::Client.new
-      @targets.push *range.expand(options[:range])
+      @targets.push *@rangeclient.expand(options[:range])
     end
 
     if (!options[:file].nil?)
@@ -150,16 +154,14 @@ class CommonCli
           stdout_matches_failure[r[:all_buf]] << @command_to_target[r[:command].object_id]
         end
       end
-      require 'rangeclient'
-      range = Range::Client.new
       # output => [targets ...]
       stdout_matches_success.each_pair do |k,v|
-        hosts = if @options[:range] then range.compress v else v.join ',' end
+        hosts = @rangeclient.compress v
         # puts "#{hosts}: '#{k.chomp}'"
         puts "SUCCESS: #{hosts}: #{k}"
       end
       stdout_matches_failure.each_pair do |k,v|
-        hosts = if @options[:range] then range.compress v else v.join ',' end
+        hosts = @rangeclient.compress v
         puts "FAILURE: #{hosts}: #{k}"
       end
 
