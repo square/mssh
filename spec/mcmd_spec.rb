@@ -1,4 +1,5 @@
 require_relative '../lib/mcmd'
+require 'fileutils'
 
 describe MultipleCmd do
   let(:instance) { MultipleCmd.new }
@@ -26,6 +27,30 @@ describe MultipleCmd do
         )
         subject
       end
+    end
+  end
+
+  describe '#add_subprocess' do
+    subject { instance.add_subprocess(cmd) }
+
+    let(:cmd) { ['/bin/bash', '-c', "ps -o ppid -p $$ | tail -n 1 > #{tracking_file}"] }
+    let(:tracking_file) { File.expand_path("#{__FILE__}.tmp") }
+
+    # Clean up after ourselves
+    around do |example|
+      begin
+        FileUtils.touch(tracking_file)
+        example.call
+      ensure
+        FileUtils.rm_f(tracking_file)
+      end
+    end
+
+    it 'forks the current process' do
+      subject
+      sleep 0.1 # let the child spawn and write to the file
+      # Expect that the current process' id has been found by the child and written
+      expect(File.read(tracking_file).to_i).to eq($$)
     end
   end
 end
