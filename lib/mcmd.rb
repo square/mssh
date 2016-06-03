@@ -28,9 +28,9 @@ class MultipleCmd
 
   def noshell_exec(cmd)
     if cmd.length == 1
-      Kernel.exec([cmd[0], cmd[0]])
+      exec([cmd[0], cmd[0]])
     else 
-      Kernel.exec([cmd[0], cmd[0]], *cmd[1..-1])
+      exec([cmd[0], cmd[0]], *cmd[1..-1])
     end
   end
   
