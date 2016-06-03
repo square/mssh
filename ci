@@ -1,0 +1,7 @@
+#!/bin/bash
+set -exuo pipefail
+
+bundle exec rspec
+
+gem build mssh.gemspec
+
