@@ -13,6 +13,8 @@ Gem::Specification.new do |s|
 
   s.add_dependency "json"
   s.add_dependency "io-poll"
+  s.add_development_dependency "pry-byebug"
+  s.add_development_dependency "rspec"
   s.default_executable = %q{mssh}
   s.executables = %W{ mssh mcmd }
 
