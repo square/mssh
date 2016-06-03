@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.executables = %W{ mssh mcmd }
 
 
-  s.files        = %w{lib/mcmd.rb bin/mcmd bin/mssh } + %w(README.md)
+  s.files        = %w{lib/mcmd.rb lib/cli.rb bin/mcmd bin/mssh } + %w(README.md)
   s.extra_rdoc_files = ["LICENSE.md"]
   s.rdoc_options = ["--charset=UTF-8"]
 end
