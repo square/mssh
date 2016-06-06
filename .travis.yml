@@ -11,7 +11,3 @@ before_install:
 #  - sudo pip install --upgrade pip 
 #  - sudo pip install cffi
 script: ./ci
-
-notifications:
-  irc: "irc.freenode.net#square"
-
