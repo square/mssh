@@ -17,11 +17,10 @@ class CommonCli
   # Parses a list of arguments, and yells
   # at us if any are wrong.
   def parse(argv)
-
-    @defs = Hash[@options.map{|k,v| [k, " (default: #{v})"] } ]
+    @defs = Hash[@options.map { |k, v| [k, " (default: #{v})"] }]
 
     optparse = OptionParser.new do |opts|
-      opts.on('-r', '--range RANGE', 'currently takes a CSV list' + @defs[:range].to_s ) do |arg|
+      opts.on('-r', '--range RANGE', 'currently takes a CSV list' + @defs[:range].to_s) do |arg|
         @options[:range] = arg
       end
       opts.on('--hostlist x,y,z', Array, 'List of hostnames to execute on' + @defs[:hostlist].to_s) do |arg|
@@ -39,23 +38,23 @@ class CommonCli
       opts.on('-g', '--global_timeout 0', 'How many seconds for the whole shebang 0 for no timeout' + @defs[:global_timeout].to_s) do |arg|
         @options[:global_timeout] = arg
       end
-      opts.on('-c', '--collapse', "Collapse similar output " + @defs[:collapse].to_s) do |arg|
+      opts.on('-c', '--collapse', 'Collapse similar output ' + @defs[:collapse].to_s) do |arg|
         @options[:collapse] = arg
       end
-      opts.on('-v', '--verbose', "Verbose output" + @defs[:verbose].to_s) do |arg|
+      opts.on('-v', '--verbose', 'Verbose output' + @defs[:verbose].to_s) do |arg|
         @options[:verbose] = arg
       end
-      opts.on('-d', '--debug', "Debug output" + @defs[:debug].to_s) do |arg|
+      opts.on('-d', '--debug', 'Debug output' + @defs[:debug].to_s) do |arg|
         @options[:debug] = arg
       end
-      opts.on('--json', "Output results as JSON" + @defs[:json_out].to_s) do |arg|
+      opts.on('--json', 'Output results as JSON' + @defs[:json_out].to_s) do |arg|
         @options[:json_out] = arg
       end
-      opts.on('--hntoken HOSTNAME', "Token used for HOSTNAME substitution" + @defs[:hostname_token].to_s) do |arg|
+      opts.on('--hntoken HOSTNAME', 'Token used for HOSTNAME substitution' + @defs[:hostname_token].to_s) do |arg|
         @options[:hostname_token] = arg
       end
 
-      @extra_options.call(opts, @options) if !@extra_options.nil?
+      @extra_options.call(opts, @options) unless @extra_options.nil?
 
       # option to merge stdin/stdout into one buf? how should this work?
       # option to ignore as-we-go yield output - this is off by default now except for success/fail
@@ -70,33 +69,29 @@ class CommonCli
 
     ## Get targets from -r or -f or --hostlist
     @targets = []
-    if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
-      raise "Error, need -r or -f or --hostlist option"
+    if options[:range].nil? && options[:file].nil? && options[:hostlist].nil?
+      raise 'Error, need -r or -f or --hostlist option'
     end
 
-    if (!options[:range].nil?)
+    unless options[:range].nil?
       @targets.push *@rangeclient.expand(options[:range])
     end
 
-    if (!options[:file].nil?)
+    unless options[:file].nil?
       targets_fd = File.open(options[:file])
       targets_fd.read.each_line { |x| @targets << x.chomp }
     end
 
-    if (!options[:hostlist].nil?)
-      @targets.push *options[:hostlist]
-    end
+    @targets.push *options[:hostlist] unless options[:hostlist].nil?
 
-    raise "no targets specified. Check your -r, -f or --hostlist inputs" if @targets.size.zero?
-    raise "need command to run"                                          if argv.size.zero?
-    raise "too many arguments"                                           if argv.size != 1
+    raise 'no targets specified. Check your -r, -f or --hostlist inputs' if @targets.size.zero?
+    raise 'need command to run'                                          if argv.size.zero?
+    raise 'too many arguments'                                           if argv.size != 1
 
     @command = argv.first
-
   end
 
   def runcmd
-
     m = MultipleCmd.new
 
     # We let the caller build the command
@@ -104,13 +99,13 @@ class CommonCli
       yield(@command.gsub(@options[:hostname_token], t), t)
     end
 
-    @command_to_target = Hash.new
+    @command_to_target = {}
     @targets.size.times do |i|
       @command_to_target[m.commands[i].object_id] = @targets[i]
     end
 
-    m.yield_startcmd = lambda { |p| puts "#{@command_to_target[p.command.object_id]}: starting" } if @options[:verbose]
-    m.yield_wait     = lambda { |p| puts "#{p.success? ? 'SUCCESS' : 'FAILURE'} #{@command_to_target[p.command.object_id]}: '#{p.stdout_buf}'" } if @options[:verbose]
+    m.yield_startcmd = ->(p) { puts "#{@command_to_target[p.command.object_id]}: starting" } if @options[:verbose]
+    m.yield_wait     = ->(p) { puts "#{p.success? ? 'SUCCESS' : 'FAILURE'} #{@command_to_target[p.command.object_id]}: '#{p.stdout_buf}'" } if @options[:verbose]
     # todo, from mssh m.yield_wait = lambda { |p| puts "#{@command_to_target[p.command.object_id]}: finished" } if @options[:verbose]
 
     # was commented out in mcmd already: m.yield_proc_timeout = lambda { |p| puts "am killing #{p.inspect}"}
@@ -121,13 +116,12 @@ class CommonCli
     m.verbose          = @options[:verbose]
     m.debug            = @options[:debug]
 
-    return m.run
+    m.run
   end
 
-  def output result
-
+  def output(result)
     ## Print as JSON array
-    if (@options[:json_out])
+    if @options[:json_out]
       require 'json'
       puts JSON.generate(result)
       return
@@ -135,17 +129,16 @@ class CommonCli
 
     # Concat stdout / stderr -> :all_buf
     result.each do |r|
-      r[:all_buf] = ""
-      r[:all_buf] += r[:stdout_buf].chomp if(!r[:stdout_buf].nil?)
-      r[:all_buf] += r[:stderr_buf].chomp if(!r[:stderr_buf].nil?)
+      r[:all_buf] = ''
+      r[:all_buf] += r[:stdout_buf].chomp unless r[:stdout_buf].nil?
+      r[:all_buf] += r[:stderr_buf].chomp unless r[:stderr_buf].nil?
     end
 
     ## Collapse similar results
     if @options[:collapse]
-      stdout_matches_success = Hash.new
-      stdout_matches_failure = Hash.new
+      stdout_matches_success = {}
+      stdout_matches_failure = {}
       result.each do |r|
-
         if r[:retval].success?
           stdout_matches_success[r[:all_buf]] = [] if stdout_matches_success[r[:all_buf]].nil?
           stdout_matches_success[r[:all_buf]] << @command_to_target[r[:command].object_id]
@@ -155,12 +148,12 @@ class CommonCli
         end
       end
       # output => [targets ...]
-      stdout_matches_success.each_pair do |k,v|
+      stdout_matches_success.each_pair do |k, v|
         hosts = @rangeclient.compress v
         # puts "#{hosts}: '#{k.chomp}'"
         puts "SUCCESS: #{hosts}: #{k}"
       end
-      stdout_matches_failure.each_pair do |k,v|
+      stdout_matches_failure.each_pair do |k, v|
         hosts = @rangeclient.compress v
         puts "FAILURE: #{hosts}: #{k}"
       end
@@ -169,14 +162,13 @@ class CommonCli
     else
       result.each do |r|
         target = @command_to_target[r[:command].object_id]
-        if (r[:retval].success?)
-            puts "#{target}:SUCCESS: #{r[:all_buf]}\n"
+        if r[:retval].success?
+          puts "#{target}:SUCCESS: #{r[:all_buf]}\n"
         else
-            exit_code = r[:retval].exitstatus.to_s if(!r[:retval].nil?)
-            puts "#{target}:FAILURE[#{exit_code}]: #{r[:all_buf]}\n"
+          exit_code = r[:retval].exitstatus.to_s unless r[:retval].nil?
+          puts "#{target}:FAILURE[#{exit_code}]: #{r[:all_buf]}\n"
         end
       end
     end
-
   end
 end

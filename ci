@@ -2,6 +2,7 @@
 set -exuo pipefail
 
 bundle exec rspec
+bundle exec rubocop -d
 
 gem build mssh.gemspec
 

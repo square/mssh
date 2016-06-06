@@ -11,11 +11,10 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = '>= 1.3.6'
 
-  s.default_executable = %q{mssh}
-  s.executables = %W{ mssh mcmd }
+  s.default_executable = 'mssh'
+  s.executables = %w( mssh mcmd )
 
-
-  s.files        = %w{lib/mcmd.rb lib/cli.rb bin/mcmd bin/mssh } + %w(README.md)
+  s.files = %w(lib/mcmd.rb lib/cli.rb bin/mcmd bin/mssh ) + %w(README.md)
   s.extra_rdoc_files = ['LICENSE.md']
   s.rdoc_options = ['--charset=UTF-8']
 
@@ -24,4 +23,3 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rubocop', '0.40.0'
 end
-
