@@ -22,5 +22,6 @@ Gem::Specification.new do |s|
   s.add_dependency 'json'
   s.add_dependency 'io-poll'
   s.add_development_dependency 'rspec'
+  s.add_development_dependency 'rubocop', '0.40.0'
 end
 
