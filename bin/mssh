@@ -2,22 +2,21 @@
 
 require_relative '../lib/cli'
 
-cli = CommonCli.new({
-  # defaults
+cli = CommonCli.new( # defaults
   :maxflight => 50,
   :timeout => 60,
   :global_timeout => 600,
-  :sshcmd => "/usr/bin/ssh",
-  :sshopt => ["-2", "-oBatchMode=yes", "-A"]
-})
+  :sshcmd => '/usr/bin/ssh',
+  :sshopt => ['-2', '-oBatchMode=yes', '-A']
+)
 
 ## Extra options for the SSH version
 cli.extra_options = lambda do |parser, options|
-  parser.on('--sshopt OPT',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
+  parser.on('--sshopt OPT', 'ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.') do |arg|
     options[:sshopt] ||= []
     options[:sshopt] << arg
   end
-  parser.on('--sshcmd BINARY', "Path to the ssh binary (default /usr/bin/ssh)") do |arg|
+  parser.on('--sshcmd BINARY', 'Path to the ssh binary (default /usr/bin/ssh)') do |arg|
     options[:sshcmd] = arg
   end
 end

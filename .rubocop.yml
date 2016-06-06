@@ -1,0 +1,20 @@
+inherit_from: .rubocop_todo.yml
+
+Style/Documentation:
+  Enabled: false
+
+Style/DotPosition:
+  EnforcedStyle: trailing
+
+Style/Encoding:
+  EnforcedStyle: when_needed
+
+Style/HashSyntax:
+  EnforcedStyle: hash_rockets # For legacy Ruby support
+
+Style/MultilineOperationIndentation:
+  EnforcedStyle: indented
+
+Style/SpecialGlobalVars:
+  Enabled: false
+
