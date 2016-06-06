@@ -10,6 +10,9 @@ class MultipleCmd
   attr_accessor :yield_wait, :yield_startcmd, :debug, :yield_proc_timeout
   attr_accessor :verbose, :poll_period, :max_read_size
 
+  # TODO: move these to cattrs on MultipleCmd::SubProc
+  attr_accessor :subproc_by_pid, :subproc_by_fd
+
   def initialize
     # these are re-initialized after every run
     @subproc_by_pid = Hash.new
@@ -28,9 +31,9 @@ class MultipleCmd
 
   def noshell_exec(cmd)
     if cmd.length == 1
-      Kernel.exec([cmd[0], cmd[0]])
+      exec([cmd[0], cmd[0]])
     else 
-      Kernel.exec([cmd[0], cmd[0]], *cmd[1..-1])
+      exec([cmd[0], cmd[0]], *cmd[1..-1])
     end
   end
   
@@ -48,18 +51,18 @@ class MultipleCmd
     subproc.command = cmd
     
     pid = fork
-    if not pid.nil?
+    if pid
       # parent
       # for mapping to subproc by pid
       subproc.pid = pid
-      @subproc_by_pid[pid] = subproc
+      subproc_by_pid[pid] = subproc
       # for mapping to subproc by i/o handle (returned from select)
-      @subproc_by_fd[stdin_rd] = subproc
-      @subproc_by_fd[stdin_wr] = subproc
-      @subproc_by_fd[stdout_rd] = subproc
-      @subproc_by_fd[stdout_wr] = subproc
-      @subproc_by_fd[stderr_rd] = subproc
-      @subproc_by_fd[stderr_wr] = subproc
+      subproc_by_fd[stdin_rd] = subproc
+      subproc_by_fd[stdin_wr] = subproc
+      subproc_by_fd[stdout_rd] = subproc
+      subproc_by_fd[stdout_wr] = subproc
+      subproc_by_fd[stderr_rd] = subproc
+      subproc_by_fd[stderr_wr] = subproc
       
       self.yield_startcmd.call(subproc) unless self.yield_startcmd.nil?
     else
@@ -76,10 +79,10 @@ class MultipleCmd
   def process_read_fds(read_fds)
     read_fds.each do |fd|
       # read available bytes, add to the subproc's read buf
-      if not @subproc_by_fd.has_key?(fd)
+      if not subproc_by_fd.has_key?(fd)
         raise "Select returned a fd which I have not seen! fd: #{fd.inspect}"
       end
-      subproc = @subproc_by_fd[fd]
+      subproc = subproc_by_fd[fd]
       buf = ""
       begin
         buf = fd.sysread(4096)
@@ -119,8 +122,8 @@ class MultipleCmd
   end # process_read_fds()
   def process_write_fds(write_fds)
     write_fds.each do |fd|
-      raise "working on an unknown fd #{fd}" unless @subproc_by_fd.has_key?(fd)
-      subproc = @subproc_by_fd[fd]
+      raise "working on an unknown fd #{fd}" unless subproc_by_fd.has_key?(fd)
+      subproc = subproc_by_fd[fd]
       buf = ""
       # add writing here, todo. not core feature
     end
@@ -130,8 +133,8 @@ class MultipleCmd
   
   # iterate and service fds in child procs, collect data and status
   def service_subprocess_io
-    write_fds = @subproc_by_pid.values.select {|x| not x.stdin_fd.nil? and not x.terminated}.map {|x| x.stdin_fd}
-    read_fds = @subproc_by_pid.values.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
+    write_fds = subproc_by_pid.values.select {|x| not x.stdin_fd.nil? and not x.terminated}.map {|x| x.stdin_fd}
+    read_fds = subproc_by_pid.values.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
 
     read_fds, write_fds, err_fds = IO.select_using_poll(read_fds, write_fds, nil, self.poll_period)
 
@@ -143,7 +146,7 @@ class MultipleCmd
 
   def process_timeouts
     now = Time.now.to_i
-    @subproc_by_pid.values.each do |p|
+    subproc_by_pid.values.each do |p|
       if ((now - p.time_start) > self.perchild_timeout) and self.perchild_timeout > 0
         # expire this child process
         
@@ -155,9 +158,9 @@ class MultipleCmd
 
   def kill_process(p)
     # do not remove from pid list until waited on
-    @subproc_by_fd.delete(p.stdin_fd)
-    @subproc_by_fd.delete(p.stdout_fd)
-    @subproc_by_fd.delete(p.stderr_fd)
+    subproc_by_fd.delete(p.stdin_fd)
+    subproc_by_fd.delete(p.stdout_fd)
+    subproc_by_fd.delete(p.stderr_fd)
     # must kill after deleting from maps
     # kill closes fds
     p.kill
@@ -168,7 +171,7 @@ class MultipleCmd
     done = false
     while not done
       # start up as many as maxflight processes
-      while @subproc_by_pid.length < self.maxflight and not @commands.empty?
+      while subproc_by_pid.length < self.maxflight and not @commands.empty?
         # take one from @commands and start it
         commands = @commands.shift
         self.add_subprocess(commands)
@@ -179,19 +182,19 @@ class MultipleCmd
       self.process_timeouts
       # service process cleanup
       self.wait
-      puts "have #{@subproc_by_pid.length} left to go" if self.debug
+      puts "have #{subproc_by_pid.length} left to go" if self.debug
       # if we have nothing in flight (active pid)
       # and nothing pending on the input list
       # then we're done
-      if @subproc_by_pid.length.zero? and @commands.empty?
+      if subproc_by_pid.length.zero? and @commands.empty?
         done = true
       end
     end
     
     data = self.return_rundata
     # these are re-initialized after every run
-    @subproc_by_pid = Hash.new
-    @subproc_by_fd = Hash.new
+    subproc_by_pid = Hash.new
+    subproc_by_fd = Hash.new
     @processed_commands = []
     # end items which are re-initialized
     return data
@@ -226,10 +229,10 @@ class MultipleCmd
         else
           # pid is now gone. remove from subproc_by_pid and
           # add to the processed commands list
-          p = @subproc_by_pid[pid]
+          p = subproc_by_pid[pid]
           p.time_end = Time.now.to_i
           p.retval = $?
-          @subproc_by_pid.delete(pid)
+          subproc_by_pid.delete(pid)
           @processed_commands << p
           just_reaped << p
         end
