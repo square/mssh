@@ -2,7 +2,6 @@
 
 require 'pp'
 require 'rubygems'
-require 'io/poll'
 
 class MultipleCmd
 
@@ -32,11 +31,11 @@ class MultipleCmd
   def noshell_exec(cmd)
     if cmd.length == 1
       exec([cmd[0], cmd[0]])
-    else 
+    else
       exec([cmd[0], cmd[0]], *cmd[1..-1])
     end
   end
-  
+
   # I should probably move this whole method
   # into SubProc and make the subproc_by_* into
   # class variables
@@ -49,7 +48,7 @@ class MultipleCmd
     subproc.stdout_fd = stdout_rd
     subproc.stderr_fd = stderr_rd
     subproc.command = cmd
-    
+
     pid = fork
     if pid
       # parent
@@ -63,7 +62,7 @@ class MultipleCmd
       subproc_by_fd[stdout_wr] = subproc
       subproc_by_fd[stderr_rd] = subproc
       subproc_by_fd[stderr_wr] = subproc
-      
+
       self.yield_startcmd.call(subproc) unless self.yield_startcmd.nil?
     else
       # child
@@ -86,7 +85,7 @@ class MultipleCmd
       buf = ""
       begin
         buf = fd.sysread(4096)
-        
+
         if buf.nil?
           raise " Impossible result from sysread()"
         end
@@ -110,7 +109,7 @@ class MultipleCmd
         # finalize read i/o
         # if we're reading, it was the process's stdout or stderr
         if fd == subproc.stdout_fd
-          subproc.stdout_fd = nil 
+          subproc.stdout_fd = nil
         elsif fd == subproc.stderr_fd
           subproc.stderr_fd = nil
         else
@@ -130,18 +129,18 @@ class MultipleCmd
   end
   def process_err_fds(err_fds)
   end
-  
+
   # iterate and service fds in child procs, collect data and status
   def service_subprocess_io
     write_fds = subproc_by_pid.values.select {|x| not x.stdin_fd.nil? and not x.terminated}.map {|x| x.stdin_fd}
     read_fds = subproc_by_pid.values.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
 
-    read_fds, write_fds, err_fds = IO.select_using_poll(read_fds, write_fds, nil, self.poll_period)
+    read_fds, write_fds, err_fds = IO.select(read_fds, write_fds, nil, self.poll_period)
 
     self.process_read_fds(read_fds) unless read_fds.nil?
     self.process_write_fds(write_fds) unless write_fds.nil?
     self.process_err_fds(err_fds) unless err_fds.nil?
-    # errors? 
+    # errors?
   end
 
   def process_timeouts
@@ -149,7 +148,7 @@ class MultipleCmd
     subproc_by_pid.values.each do |p|
       if ((now - p.time_start) > self.perchild_timeout) and self.perchild_timeout > 0
         # expire this child process
-        
+
         self.yield_proc_timeout.call(p) unless self.yield_proc_timeout.nil?
         self.kill_process(p)
       end
@@ -190,7 +189,7 @@ class MultipleCmd
         done = true
       end
     end
-    
+
     data = self.return_rundata
     # these are re-initialized after every run
     subproc_by_pid = Hash.new
@@ -199,7 +198,7 @@ class MultipleCmd
     # end items which are re-initialized
     return data
   end
-  
+
   def return_rundata
     data = []
     @processed_commands.each do |c|
@@ -217,7 +216,7 @@ class MultipleCmd
     end
     return data
   end
-  
+
   def wait
     possible_children = true
     just_reaped = Array.new
@@ -244,7 +243,7 @@ class MultipleCmd
     # We may have waited on a child before reading all its output. Collect those missing bits. No blocking.
     if not just_reaped.empty?
       read_fds = just_reaped.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
-      read_fds, write_fds, err_fds = IO.select_using_poll(read_fds, nil, nil, 0)
+      read_fds, write_fds, err_fds = IO.select(read_fds, nil, nil, 0)
       self.process_read_fds(read_fds) unless read_fds.nil?
     end
     just_reaped.each do |p|
