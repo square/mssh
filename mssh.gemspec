@@ -20,7 +20,6 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--charset=UTF-8"]
 
   s.add_dependency "json"
-  s.add_dependency "io-poll"
   s.add_development_dependency "rspec"
 end
 
